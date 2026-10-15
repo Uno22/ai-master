@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant Buyer
+    participant API as NestJS API
+    participant DB as MySQL (planned)
+    participant Broker as Kafka (planned)
+    Buyer->>API: POST /orders (idempotencyKey)
+    API->>DB: Transaction: unique key + conditional reserve + order row
+    alt Stock available
+      DB-->>API: Commit order + outbox event
+      API-->>Buyer: 201 orderId
+      Note over DB,Broker: Outbox relay publishes after commit
+      DB->>Broker: order-created (eventId)
+    else Insufficient stock
+      DB-->>API: Conflict
+      API-->>Buyer: 409 INSUFFICIENT_STOCK
+    end
